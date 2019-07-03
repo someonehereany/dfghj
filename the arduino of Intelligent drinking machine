@@ -1,0 +1,164 @@
+#include <LiquidCrystal_I2C.h>
+#include "SCoop.h";
+#include "SR04.h"
+#include <Wire.h> 
+LiquidCrystal_I2C lcd(0x3F,16,2);  //lcd地址设计
+char serialData;  
+int lightSensor_0 = A0;
+int pinRelay = 9; //管脚9连接到继电器模块的信号脚
+bool a=0;//判断蓝牙是否开启
+bool mc=0;//中间有
+bool hc=0;//高处有
+int middlelong=15;//中间部分宽度
+int higtherlong=15;//高处的宽度
+float littlewether=22;//假定中间部分高这么多
+float middlewether=14;//假定高处高这么多（源50，减去）
+float wetherhight_now=100;//测量水面的高度
+float wethernow=0;//假定水有这么高
+const int echopin=3; // echo接3端口
+const int trigpin=2; // trig接2端口  测量水面的。
+
+
+const int echopin2=5;
+const int trigpin2=4;// 中间侧超声波测距器
+
+
+const int echopin3=6;
+const int trigpin3=7;// 目前是中间的了超声波测距器
+void setup() { 
+  Serial.begin(9600);  
+  lcd.init();                  // 初始化LCD
+  lcd.backlight();             //设置LCD背景等亮
+ pinMode(pinRelay, OUTPUT); //设置pinRelay脚为输出状态
+ mySCoop.start(); 
+ pinMode(echopin,INPUT); //设定echo为输入模式
+  pinMode(trigpin,OUTPUT);//设定trig为输出模式
+  pinMode(echopin2,INPUT); //设定echo为输入模式
+  pinMode(trigpin2,OUTPUT);//设定trig为输出模式
+pinMode(echopin3,INPUT);
+  pinMode(trigpin3,OUTPUT);
+pinMode(lightSensor_0, INPUT);
+}  
+float wetherhight()
+{
+ digitalWrite(trigpin,LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigpin,HIGH);
+delayMicroseconds(10);
+digitalWrite(trigpin,LOW); //发一个10ms的高脉冲去触发TrigPin
+float middle = pulseIn(echopin,HIGH);//接收高电平时间
+  middle= middle/58.0;//计算距离
+  Serial.println("距离水面");
+    Serial.println(middle);
+return middle;
+}
+
+bool middle_one()
+{
+ digitalWrite(trigpin2,LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigpin2,HIGH);
+delayMicroseconds(10);
+digitalWrite(trigpin2,LOW); //发一个10ms的高脉冲去触发TrigPin
+float abc = pulseIn(echopin2,HIGH);//接收高电平时间
+  abc= abc/58.0;//计算距离
+   Serial.println("较高的距离为");
+    Serial.println(abc);
+if(abc<middlelong)
+{
+hc=1;
+}
+else{
+hc=0;
+}
+ Serial.print("hc=");
+  Serial.println(hc);
+return hc;
+}
+bool higer_one()
+{
+  digitalWrite(trigpin3,LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigpin3,HIGH);
+delayMicroseconds(10);
+digitalWrite(trigpin3,LOW); //发一个10ms的高脉冲去触发TrigPin
+float higther = pulseIn(echopin3,HIGH);//接收高电平时间
+  higther= higther/58.0;//计算距离
+  Serial.println("中间的距离为");
+    Serial.println(higther);
+if(higther<middlelong)
+{
+mc=1;
+}
+else{
+mc=0;
+}
+  Serial.print("mc=");
+  Serial.println(mc);
+return mc;
+}
+ 
+void loop(){
+  a=1; 
+   Serial.println("a=1了");
+  //if( Serial.available() > 0 ){   
+      
+    //serialData =  Serial.read();
+      
+    //if ('OO' == serialData) {    
+     // a=1;
+      
+    //}   
+    //else if('CC'==serialData){
+     // a=0;
+   // }
+    
+    //else{  
+      //do nothing.  
+    //}  
+mc=middle_one();
+hc=higer_one();
+if(a==0)
+{
+  lcd.setCursor(0,0);                //设置显示指针
+  lcd.print("shat down");     //输出字符到LCD1602上
+  lcd.setCursor(0,1);
+  Serial.println("shat down");
+}
+else{
+ lcd.setCursor(0,0);                //设置显示指针
+  lcd.print("welcome");//输出字符到LCD1602上
+   Serial.println("wellcome");
+  lcd.setCursor(0,1);
+  if(hc==1&&mc==1)
+  {
+    wethernow=middlewether;//让假定的水有高处的那么高
+    }
+    else if(hc==0&&mc==1)
+    {
+       wethernow=littlewether;
+      }
+
+
+      wetherhight_now=wetherhight();
+   if(wetherhight_now>wethernow)
+   {
+    
+     digitalWrite(pinRelay, HIGH);//输出HIGH电平,继电器模块闭合
+      Serial.println("放水");
+    
+    }
+    else if(wetherhight_now<wethernow)
+    {
+       digitalWrite(pinRelay, LOW);//输出LOW电平,继电器模块断开
+        Serial.println("关了");
+       hc=0;
+       mc=0;
+       wethernow=100;
+       
+      }
+  
+}
+
+  } 
+//}
